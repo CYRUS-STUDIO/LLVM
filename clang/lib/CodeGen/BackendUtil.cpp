@@ -88,6 +88,7 @@
 #include "llvm/Transforms/Utils/ModuleUtils.h"
 #include <memory>
 #include <optional>
+
 using namespace clang;
 using namespace llvm;
 
@@ -119,6 +120,36 @@ std::string getDefaultProfileGenName() {
              ? "default_%m.proflite"
              : "default_%m.profraw";
 }
+
+
+#if defined(_WIN32) || defined(_WIN64) // Windows 平台
+#include <windows.h> // Windows 的动态库加载 API
+
+static void registerMD5FunctionNamePassPlugin(FunctionPassManager &FPM) {
+  errs() << "call registerMD5FunctionNamePassPlugin.\n";
+
+  // 动态加载 MD5FunctionNamePass.dll
+  HMODULE PluginHandle = LoadLibrary(TEXT("MD5FunctionNamePass.dll"));
+  if (!PluginHandle) {
+    errs() << "Failed to load plugin: MD5FunctionNamePass.dll\n";
+    return;
+  }
+
+  // 查找 DLL 导出的函数 clangAddPass
+  using AddPassFuncType = void(__stdcall *)(FunctionPassManager &);
+  auto AddPass = (AddPassFuncType)GetProcAddress(PluginHandle, "clangAddPass");
+  if (!AddPass) {
+    errs() << "Failed to find exported function: clangAddPass\n";
+    FreeLibrary(PluginHandle);
+    return;
+  }
+
+  AddPass(FPM); // 调用动态库中的注册逻辑
+
+  llvm::errs() << "Successfully added md5-function-pass.\n";
+}
+#endif
+
 
 class EmitAssemblyHelper {
   DiagnosticsEngine &Diags;
@@ -161,7 +192,7 @@ class EmitAssemblyHelper {
   std::unique_ptr<llvm::ToolOutputFile> openOutputFile(StringRef Path) {
     std::error_code EC;
     auto F = std::make_unique<llvm::ToolOutputFile>(Path, EC,
-                                                    llvm::sys::fs::OF_None);
+                                                     llvm::sys::fs::OF_None);
     if (EC) {
       Diags.Report(diag::err_fe_unable_to_open_output) << Path << EC.message();
       F.reset();
@@ -890,8 +921,10 @@ void EmitAssemblyHelper::RunOptimizationPipeline(
           << PluginFN << toString(PassPlugin.takeError());
     }
   }
+
   for (const auto &PassCallback : CodeGenOpts.PassBuilderCallbacks)
     PassCallback(PB);
+
 #define HANDLE_EXTENSION(Ext)                                                  \
   get##Ext##PluginInfo().RegisterPassBuilderCallbacks(PB);
 #include "llvm/Support/Extension.def"
@@ -1021,6 +1054,22 @@ void EmitAssemblyHelper::RunOptimizationPipeline(
       MPM.addPass(PB.buildPerModuleDefaultPipeline(Level));
     }
   }
+
+
+#if defined(_WIN32) || defined(_WIN64) // 判断是否为 Windows 平台
+
+  // 创建一个 FunctionPassManager 对象，用于管理和调度函数级的 Pass
+  FunctionPassManager FPM;
+
+  // 调用动态加载的插件注册函数，将 MD5FunctionNamePass 添加到 FunctionPassManager 中
+  registerMD5FunctionNamePassPlugin(FPM);
+
+  // 将 FunctionPassManager 适配为 ModulePassManager 所需要的格式，并添加到 ModulePassManager 中
+  // 这样就能将 FunctionPass 管道添加到模块级别的优化管道中
+  MPM.addPass(createModuleToFunctionPassAdaptor(std::move(FPM)));
+
+#endif
+
 
   // Re-link against any bitcodes supplied via the -mlink-builtin-bitcode option
   // Some optimizations may generate new function calls that would not have
@@ -1298,7 +1347,7 @@ void clang::EmitBackendOutput(
                       .moveInto(CombinedIndex)) {
       logAllUnhandledErrors(std::move(E), errs(),
                             "Error loading index file '" +
-                                CGOpts.ThinLTOIndexFile + "': ");
+                            CGOpts.ThinLTOIndexFile + "': ");
       return;
     }
 
