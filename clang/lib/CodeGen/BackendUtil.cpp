@@ -122,20 +122,20 @@ std::string getDefaultProfileGenName() {
 }
 
 
-#if defined(_WIN32) || defined(_WIN64) // Windows Æ½Ì¨
-#include <windows.h> // Windows µÄ¶¯Ì¬¿â¼ÓÔØ API
+#if defined(_WIN32) || defined(_WIN64) // Windows å¹³å°
+#include <windows.h> // Windows çš„åŠ¨æ€åº“åŠ è½½ API
 
 static void registerMD5FunctionNamePassPlugin(FunctionPassManager &FPM) {
   errs() << "call registerMD5FunctionNamePassPlugin.\n";
 
-  // ¶¯Ì¬¼ÓÔØ MD5FunctionNamePass.dll
+  // åŠ¨æ€åŠ è½½ MD5FunctionNamePass.dll
   HMODULE PluginHandle = LoadLibrary(TEXT("MD5FunctionNamePass.dll"));
   if (!PluginHandle) {
     errs() << "Failed to load plugin: MD5FunctionNamePass.dll\n";
     return;
   }
 
-  // ²éÕÒ DLL µ¼³öµÄº¯Êı clangAddPass
+  // æŸ¥æ‰¾ DLL å¯¼å‡ºçš„å‡½æ•° clangAddPass
   using AddPassFuncType = void(__stdcall *)(FunctionPassManager &);
   auto AddPass = (AddPassFuncType)GetProcAddress(PluginHandle, "clangAddPass");
   if (!AddPass) {
@@ -144,7 +144,7 @@ static void registerMD5FunctionNamePassPlugin(FunctionPassManager &FPM) {
     return;
   }
 
-  AddPass(FPM); // µ÷ÓÃ¶¯Ì¬¿âÖĞµÄ×¢²áÂß¼­
+  AddPass(FPM); // è°ƒç”¨åŠ¨æ€åº“ä¸­çš„æ³¨å†Œé€»è¾‘
 
   llvm::errs() << "Successfully added md5-function-pass.\n";
 }
@@ -192,7 +192,7 @@ class EmitAssemblyHelper {
   std::unique_ptr<llvm::ToolOutputFile> openOutputFile(StringRef Path) {
     std::error_code EC;
     auto F = std::make_unique<llvm::ToolOutputFile>(Path, EC,
-                                                     llvm::sys::fs::OF_None);
+                                                    llvm::sys::fs::OF_None);
     if (EC) {
       Diags.Report(diag::err_fe_unable_to_open_output) << Path << EC.message();
       F.reset();
@@ -1056,19 +1056,19 @@ void EmitAssemblyHelper::RunOptimizationPipeline(
   }
 
 
-#if defined(_WIN32) || defined(_WIN64) // ÅĞ¶ÏÊÇ·ñÎª Windows Æ½Ì¨
-
-  // ´´½¨Ò»¸ö FunctionPassManager ¶ÔÏó£¬ÓÃÓÚ¹ÜÀíºÍµ÷¶Èº¯Êı¼¶µÄ Pass
-  FunctionPassManager FPM;
-
-  // µ÷ÓÃ¶¯Ì¬¼ÓÔØµÄ²å¼ş×¢²áº¯Êı£¬½« MD5FunctionNamePass Ìí¼Óµ½ FunctionPassManager ÖĞ
-  registerMD5FunctionNamePassPlugin(FPM);
-
-  // ½« FunctionPassManager ÊÊÅäÎª ModulePassManager ËùĞèÒªµÄ¸ñÊ½£¬²¢Ìí¼Óµ½ ModulePassManager ÖĞ
-  // ÕâÑù¾ÍÄÜ½« FunctionPass ¹ÜµÀÌí¼Óµ½Ä£¿é¼¶±ğµÄÓÅ»¯¹ÜµÀÖĞ
-  MPM.addPass(createModuleToFunctionPassAdaptor(std::move(FPM)));
-
-#endif
+//#if defined(_WIN32) || defined(_WIN64) // åˆ¤æ–­æ˜¯å¦ä¸º Windows å¹³å°
+//
+//  // åˆ›å»ºä¸€ä¸ª FunctionPassManager å¯¹è±¡ï¼Œç”¨äºç®¡ç†å’Œè°ƒåº¦å‡½æ•°çº§çš„ Pass
+//  FunctionPassManager FPM;
+//
+//  // è°ƒç”¨åŠ¨æ€åŠ è½½çš„æ’ä»¶æ³¨å†Œå‡½æ•°ï¼Œå°† MD5FunctionNamePass æ·»åŠ åˆ° FunctionPassManager ä¸­
+//  registerMD5FunctionNamePassPlugin(FPM);
+//
+//  // å°† FunctionPassManager é€‚é…ä¸º ModulePassManager æ‰€éœ€è¦çš„æ ¼å¼ï¼Œå¹¶æ·»åŠ åˆ° ModulePassManager ä¸­
+//  // è¿™æ ·å°±èƒ½å°† FunctionPass ç®¡é“æ·»åŠ åˆ°æ¨¡å—çº§åˆ«çš„ä¼˜åŒ–ç®¡é“ä¸­
+//  MPM.addPass(createModuleToFunctionPassAdaptor(std::move(FPM)));
+//
+//#endif
 
 
   // Re-link against any bitcodes supplied via the -mlink-builtin-bitcode option
@@ -1347,7 +1347,7 @@ void clang::EmitBackendOutput(
                       .moveInto(CombinedIndex)) {
       logAllUnhandledErrors(std::move(E), errs(),
                             "Error loading index file '" +
-                            CGOpts.ThinLTOIndexFile + "': ");
+                                CGOpts.ThinLTOIndexFile + "': ");
       return;
     }
 
