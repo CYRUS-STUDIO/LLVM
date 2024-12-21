@@ -94,9 +94,7 @@ bool FlatteningPass::flatten(Function &F) {
         // 非条件跳转
         else if(BB->getTerminator()->getNumSuccessors() == 1){
             BasicBlock *sucBB = BB->getTerminator()->getSuccessor(0);
-            if (bEntryBB_isConditional) {
-                entryBB.getTerminator()->eraseFromParent();
-            }
+            BB->getTerminator()->eraseFromParent();
             ConstantInt *numCase = swInst->findCaseDest(sucBB);
             new StoreInst(numCase, swVarPtr, BB);
             BranchInst::Create(returnBB, BB);
