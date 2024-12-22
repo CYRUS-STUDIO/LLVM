@@ -139,24 +139,24 @@ static cl::opt<int> ObfTimes("bcf_loop", cl::desc("Choose how many time the -bcf
 BasicBlock *createAlteredBasicBlock(BasicBlock *basicBlock, const Twine &Name = "gen", Function *F = 0);
 
 PreservedAnalyses BogusControlFlowPass::run(Function& F, FunctionAnalysisManager& AM) {
-    // Check if the percentage is correct
-    if (ObfTimes <= 0){
-        errs() << "BogusControlFlow application number -bcf_loop=x must be x > 0";
-        return PreservedAnalyses::all();
-    }
-    // Check if the number of applications is correct
-    if (!((ObfProbRate > 0) && (ObfProbRate <= 100))) {
-      errs() << "BogusControlFlow application basic blocks percentage "
-                "-bcf_prob=x must be 0 < x <= 100";
-      return PreservedAnalyses::all();
-    }
-    // If fla annotations
-    if (toObfuscate(flag, &F, "bcf")){
-      bogus(F);
-      doF(*F.getParent(), F);
-      return PreservedAnalyses::none();
-    }
+  // Check if the percentage is correct
+  if (ObfTimes <= 0){
+    errs() << "BogusControlFlow application number -bcf_loop=x must be x > 0";
     return PreservedAnalyses::all();
+  }
+  // Check if the number of applications is correct
+  if (!((ObfProbRate > 0) && (ObfProbRate <= 100))) {
+    errs() << "BogusControlFlow application basic blocks percentage "
+              "-bcf_prob=x must be 0 < x <= 100";
+    return PreservedAnalyses::all();
+  }
+  // If fla annotations
+  if (toObfuscate(flag, &F, "bcf")){
+    bogus(F);
+    doF(*F.getParent(), F);
+    return PreservedAnalyses::none();
+  }
+  return PreservedAnalyses::all();
 }
 
 
@@ -289,8 +289,8 @@ void BogusControlFlowPass::addBogusFlow(BasicBlock *basicBlock, Function &F) {
 
   // The always true condition. End of the first block
   Twine *var4 = new Twine("condition");
-  FCmpInst *condition = new FCmpInst(InsertPosition(basicBlock),
-                                     FCmpInst::FCMP_TRUE, LHS, RHS, *var4); //fix for llvm 19
+  FCmpInst *condition =
+      new FCmpInst(*basicBlock, FCmpInst::FCMP_TRUE, LHS, RHS, *var4);
   DEBUG_WITH_TYPE("gen", errs() << "bcf: Always true condition created\n");
 
   // Jump to the original basic block if the condition is true or
@@ -325,9 +325,8 @@ void BogusControlFlowPass::addBogusFlow(BasicBlock *basicBlock, Function &F) {
   originalBB->getTerminator()->eraseFromParent();
   // We add at the end a new always true condition
   Twine *var6 = new Twine("condition2");
-  
-  FCmpInst *condition2 = new FCmpInst(InsertPosition (originalBB),
-                                      CmpInst::FCMP_TRUE, LHS, RHS, *var6);  //fix for llvm 19
+  FCmpInst *condition2 =
+      new FCmpInst(*originalBB, CmpInst::FCMP_TRUE, LHS, RHS, *var6);
   BranchInst::Create(originalBBpart2, alteredBB, (Value *)condition2,
                      originalBB);
   DEBUG_WITH_TYPE("gen", errs()
@@ -678,5 +677,5 @@ bool BogusControlFlowPass::doF(Module &M, Function &F) {
  * @return FunctionPass*
  */
 BogusControlFlowPass *llvm::createBogusControlFlow(bool flag){
-    return new BogusControlFlowPass(flag);
+  return new BogusControlFlowPass(flag);
 }

@@ -210,7 +210,7 @@ void llvm::fixStack(Function &F) {
   // Demote escaped instructions
   //NumRegsDemoted += WorkList.size();
   for (Instruction *I : WorkList)
-    DemoteRegToStack(*I, false, AllocaInsertionPoint->getIterator()); //fix for llvm 19
+    DemoteRegToStack(*I, false, AllocaInsertionPoint); //fix for llvm 18
 
   WorkList.clear();
 
@@ -222,7 +222,7 @@ void llvm::fixStack(Function &F) {
   // Demote phi nodes
   //NumPhisDemoted += WorkList.size();
   for (Instruction *I : WorkList)
-    DemotePHIToStack(cast<PHINode>(I), AllocaInsertionPoint->getIterator()); //fix for llvm19
+    DemotePHIToStack(cast<PHINode>(I), AllocaInsertionPoint); //fix for llvm18
 }
 
 /**
