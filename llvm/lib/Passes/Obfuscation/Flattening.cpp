@@ -37,6 +37,26 @@ bool FlatteningPass::flatten(Function &F) {
       outs() << "[obf] force_nofla: " << F.getName().str().c_str() << "\n";
       return false;
     }
+
+    // This implementation only knows how to rewrite ordinary branches.
+    // In particular, fixStack cannot safely demote values produced by invokes
+    // after their EH CFG has been mixed with the dispatcher.  C++ code with
+    // exceptions commonly contains invoke/landingpad blocks, which used to
+    // make DemoteRegToStack call GetSuccessorNumber on an edge that no longer
+    // existed and crash clang with SIGBUS.
+    for (BasicBlock &BB : F) {
+      Instruction *Term = BB.getTerminator();
+      if (Term->getNumSuccessors() != 0 && !isa<BranchInst>(Term))
+        return false;
+      if (BB.isEHPad())
+        return false;
+    }
+
+    // Convert cross-basic-block SSA values and PHIs before changing the CFG.
+    // Doing this after replacing the original edges leaves PHI incoming blocks
+    // referring to stale predecessors and is too late for DemoteRegToStack.
+    fixStack(F);
+
     // 将除入口块（第一个基本块）以外的基本块保存到一个 vector 容器中，便于后续处理
     // 首先保存所有基本块
     vector<BasicBlock*> origBB;
@@ -119,7 +139,6 @@ bool FlatteningPass::flatten(Function &F) {
             BranchInst::Create(returnBB, BB);
         }
     }
-    fixStack(F); // 修复逃逸变量和PHI指令
     return true;
 }
 
